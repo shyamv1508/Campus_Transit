@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Campus Transit Live Map</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;color:#17345c}
+header{padding:14px 20px;background:#17345c;color:white}header h2{margin:0;font-size:19px}
+#map{height:calc(100vh - 68px)}.status{font-size:12px;color:#d7e6fa;margin-top:5px}
+</style>
+</head>
+<body>
+<header><h2>Campus Transit · Live Bus Map</h2><div class="status" id="status">Connecting to tracking server…</div></header>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map=L.map('map').setView([13.0827,80.2707],12);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+const markers=new Map();
+async function refresh(){
+ try{
+  const response=await fetch('/api/locations'); if(!response.ok)throw new Error('Server response '+response.status);
+  const buses=await response.json();
+  buses.forEach(bus=>{
+   const point=[bus.latitude,bus.longitude], label=bus.bus_number+' · '+bus.updated_at;
+   if(markers.has(bus.bus_id)){markers.get(bus.bus_id).setLatLng(point).setPopupContent(label)}
+   else{markers.set(bus.bus_id,L.marker(point).addTo(map).bindPopup(label))}
+  });
+  document.getElementById('status').textContent=buses.length+' bus location(s) · Updated '+new Date().toLocaleTimeString();
+ }catch(error){document.getElementById('status').textContent='Tracking server unavailable: '+error.message}
+}
+refresh();setInterval(refresh,3000);
+</script>
+</body></html>

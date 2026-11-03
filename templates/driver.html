@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Driver GPS Sender</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f3f6fb;color:#17345c;margin:0;padding:28px}
+main{max-width:520px;margin:auto;background:white;padding:26px;border-radius:12px}
+label{display:block;margin:14px 0 6px}input,button{font:inherit;padding:10px;width:100%;box-sizing:border-box}
+button{margin-top:16px;background:#2878d0;color:white;border:0;border-radius:6px;cursor:pointer}
+#status{margin-top:16px;color:#475569;white-space:pre-wrap}
+</style></head>
+<body><main><h2>Driver GPS Sender</h2>
+<p>Enter the bus ID shown in the project database (the demo bus ID is 1), then start sharing your location.</p>
+<label for="bus">Bus ID</label><input id="bus" type="number" min="1" value="1">
+<button id="start">Start tracking</button><button id="stop" disabled>Stop tracking</button>
+<div id="status">Waiting to start.</div></main>
+<script>
+let watchId=null;
+const status=document.getElementById('status');
+document.getElementById('start').onclick=()=>{
+ if(!navigator.geolocation){status.textContent='This browser does not support geolocation.';return}
+ const busId=Number(document.getElementById('bus').value);
+ if(!Number.isInteger(busId)||busId<1){status.textContent='Enter a valid bus ID.';return}
+ watchId=navigator.geolocation.watchPosition(async position=>{
+  const {latitude,longitude}=position.coords;
+  try{
+   const response=await fetch('/api/location',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({bus_id:busId,latitude,longitude})});
+   const result=await response.json(); if(!response.ok)throw new Error(result.error||'Update failed');
+   status.textContent='Location sent: '+latitude.toFixed(5)+', '+longitude.toFixed(5)+'\n'+new Date().toLocaleTimeString();
+  }catch(error){status.textContent='Could not send location: '+error.message}
+ },error=>{status.textContent='GPS error: '+error.message},{enableHighAccuracy:true,maximumAge:3000,timeout:15000});
+ document.getElementById('start').disabled=true;document.getElementById('stop').disabled=false;
+};
+document.getElementById('stop').onclick=()=>{
+ if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+ watchId=null;document.getElementById('start').disabled=false;document.getElementById('stop').disabled=true;
+ status.textContent='Location sharing stopped.';
+};
+</script></body></html>
